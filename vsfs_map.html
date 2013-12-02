@@ -1,0 +1,236 @@
+<html>
+
+<head>
+  <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.6.4/leaflet.css" />
+  <title> VSFS Map </title>
+  <style>
+  #map { height: 500px; }
+  </style>
+</head>
+	
+<script src="http://cdn.leafletjs.com/leaflet-0.6.4/leaflet.js"></script>
+<script src="JSON-js-master\json2.js"></script>
+<div id="map"></div>
+ 
+<script src="vsfs_data.geojson"></script>
+
+<script>
+var GEODATA_VAR_NAME = "geo_data"; // var name supplied by geojson js
+
+var showList;		// method for displaying list
+var showProps;		// method for displaying object properties
+
+var map;			// base map
+var geoData;		// contains geojson data
+var featureCol;		// geojson list of features
+var project;		// object containing project feature, marker, and assoc routes
+var projects;		// list of projects
+var students;		// list of student features
+var routes;			// list of routes
+var projectMarker;	// circleMarker
+var studentMarker;	// circleMarker
+var routeLine;		// polyLine - TODO: CHANGE TO MUTLIPOLYLINE
+var projectControl	// A control to select project
+var projectInfo		// A control to display project info
+var popup;			// leaflet popup
+var feature;		// geojson feature 
+var html			// a string for html building
+var i,j;
+
+showList = function(lst) {
+	outStr = "List of length "+lst.length+"\n[";
+	for ( var i=0; i<lst.length-1; i++ ) {
+		outStr += lst[i].toString() + ",";
+	}
+	outStr += lst[lst.length-1].toString() + "]";
+	alert(outStr);
+};
+showProps = function(obj) {
+	for( key in obj) {
+	  if (obj.hasOwnProperty(key)) {
+		  alert(key+" : "+obj[key]);
+		}
+	}
+};
+
+// -- mapping -- //
+geoData = window[GEODATA_VAR_NAME];
+map = L.map('map').setView([38,-99], 4); // U.S.
+map.zoomControl.setPosition('topright');
+L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+	attribution: 'Map data © OpenStreetMap contributors',
+	maxZoom: 7,
+}).addTo(map);
+var projectControl = L.control();
+projectControl.onAdd = function (map) {
+	this._div = L.DomUtil.create('div', 'projectControl');
+	return this._div;
+};
+var projectInfo = L.control();
+projectInfo.onAdd = function (map) {
+	this._div = L.DomUtil.create('div', 'projectInfo');
+	return this._div;
+};
+projectInfo.setHTML = function (content) {
+	var prefix = "<div style='border: 1px solid gray'><div style='max-width: 370px; border: 5px solid white; background-color:white'>";
+	var affix = "</div></div>";
+	this._div.innerHTML = prefix + content + affix;	
+}
+projectControl.setHTML = function (content) {
+	this._div.innerHTML = content;
+}
+
+projectControl.setPosition('topleft');
+projectControl.addTo(map);
+projectInfo.setPosition('topleft');
+projectInfo.addTo(map);
+
+projects = [];
+for (i = 0; i < geoData.length; i++) { // Each feature collection
+	featureCol = geoData[i];	
+	students = [];
+	routes = [];
+	project = { // create project
+		feature: null,
+		marker: null,
+		routeLines: [],
+		studentCoordinates: [],
+		setEvents: function() {
+			var onMouseover = function(e) {
+				for (var k = 0; k < this.routeLines.length; k++) {
+					map.addLayer(this.routeLines[k]);
+				}
+			};
+			var onMouseout = function(e) {
+				for (var k = 0; k < this.routeLines.length; k++) {
+					map.removeLayer(this.routeLines[k]);
+				}
+			};
+			if (this.marker) {
+				this.marker.on( {
+					mouseout: onMouseout,
+					mouseover: onMouseover
+				}, this);
+			}
+		}
+	};
+	
+	for (j = 0; j < featureCol.features.length; j++) {
+		feature = featureCol.features[j];
+		if (!feature.properties.hasOwnProperty('class')) 
+			continue;
+		if (feature.properties.class == 'project') {
+			project.feature = feature;
+		} else if (feature.properties.class == 'student') {
+			students.push(feature);
+		} else if (feature.properties.class == 'route') {
+			routes.push(feature);
+		}
+	}
+	
+	//  We assume that every feature collection has exactly one project, 
+	//   at least one student, and at least one route here
+	for (j = 0; j < students.length; j++) {
+		if (students[j].geometry.hasOwnProperty('coordinates')) {
+			project.studentCoordinates.push(students[j].geometry.coordinates);
+		}
+		popup = L.popup();
+		studentMarker = L.circleMarker(students[j].geometry.coordinates.reverse(),{
+			color: '#FFB300',
+			radius: 2
+		}).addTo(map);
+		popup.setContent(students[j].properties.name);
+		studentMarker.bindPopup(popup);
+		studentMarker.on('mouseover', function(e) {
+			this.openPopup();
+		});
+		studentMarker.on('mouseout', function(e) {
+			this.closePopup();
+		});
+	}
+	
+	for (j = 0; j < routes.length; j++) { // add route
+		routeLine = L.polyline(routes[j].geometry.coordinates,{
+			color: '#383942',
+			smoothFactor: 1.0,
+			weight: 1
+		}).addTo(map);
+		project.routeLines.push(routeLine);
+		map.removeLayer(routeLine)
+	}
+
+	project.marker = L.circleMarker(project.feature.geometry.coordinates.reverse(),{
+		color: '#004CFF',
+		radius: 7
+	}).addTo(map);
+
+	project.setEvents();
+	projects.push(project);
+	
+}
+
+function loadInfo(sel) {
+	for (j=0; j < projects.length; j++) {
+		if (projects[j].feature.properties.name === sel.value) {
+			project = projects[j];
+			projectInfo.setHTML(project.feature.properties.summary);
+			var coords = project.studentCoordinates;
+			coords.push(project.feature.geometry.coordinates)
+			for (var k = 0; k < project.routeLines.length; k++) {
+					map.addLayer(project.routeLines[k]);
+				}
+			//updateMapView(coords);
+		}
+	};
+	
+	//projectInfo.setHTML(sel.value);
+	//map.fitBounds([]); // southWest, northEast
+	
+};
+function updateMapView(points) { // sets map view given a list of points
+	var minLat = 90; // the maximum
+	var maxLat = -90; // the minimum
+	var minLon = 180;
+	var maxLon = -180;
+	for (j=0; j < points.length; j++) {
+		if (points[j][0] < minLat) {
+			minLat = points[j][0];
+		} else if (points[j][0] > maxLat) {
+			maxLat = points[j][0];
+		}
+		if (points[j][1] < minLon) {
+			minLon = points[j][1];
+		} else if (points[j][1] > maxLon) {
+			maxLon = points[j][1];
+		}
+	};
+	map.fitBounds([[minLat,minLon],[maxLat,maxLon]]);
+};
+
+html = "<select onchange='loadInfo(this)'>";
+for (i=0; i < projects.length; i++) {
+	project = projects[i];
+	var name = project.feature.properties.name;
+	var infoToPass = {
+		"name": name,
+		"coordinates": project.studentCoordinates,
+		"summary": project.feature.properties.summary
+		}
+	html += "<option value='" + name + "'>" + name + '</option>';
+};
+
+html += "</select>";
+projectControl.setHTML(html);
+alert('success');
+
+/*var popup = L.popup();
+function onMapClick(e) {
+    popup
+        .setLatLng(e.latlng)
+        .setContent("You clicked the map at " + e.latlng.toString())
+        .openOn(map);
+}
+map.on('click', onMapClick);
+*/
+</script>
+</html>
