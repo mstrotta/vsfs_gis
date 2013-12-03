@@ -1,0 +1,139 @@
+<html>
+
+<head>
+  <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.6.4/leaflet.css" />
+  <title> VSFS Map </title>
+  <style>
+  #map { height: 500px; }
+  </style>
+</head>
+	
+<script src="http://cdn.leafletjs.com/leaflet-0.6.4/leaflet.js"></script>
+  
+<div id="map"></div>
+ 
+<script src="vsfs_data.geojson"></script>
+
+<script>
+var GEODATA_VAR_NAME = "geo_data"; // var name supplied by geojson js
+
+var showList;		// method for displaying list
+var showProps;		// method for displaying object properties
+
+var map;		// base map
+var geoData;		// contains geojson data
+var featureCol;		// geojson list of features
+var project;		// object containing project feature, marker, and assoc routes
+var students;		// list of student features
+var routes;		// list of routes
+var projectMarker;
+var studentMarker;
+//var studentMarkers;
+var routeLine;
+
+var popup;
+var i,j;
+var feature;
+
+showList = function(lst) {
+	outStr = "List of length "+lst.length+"\n[";
+	for ( var i=0; i<lst.length-1; i++ ) {
+		outStr += lst[i].toString() + ",";
+	}
+	outStr += lst[lst.length-1].toString() + "]";
+	alert(outStr);
+};
+showProps = function(obj) {
+	for( key in obj) {
+	  if (obj.hasOwnProperty(key)) {
+		  alert(key+" : "+obj[key]);
+		}
+	}
+};
+
+// -- mapping -- //
+geoData = window[GEODATA_VAR_NAME]
+map = L.map('map').setView([38,-99], 4); // U.S.
+L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+	attribution: 'Map data © OpenStreetMap contributors',
+	maxZoom: 7
+}).addTo(map);
+	
+for (i = 0; i < geoData.length; i++) {
+	featureCol = geoData[i];	
+	students = [];
+	routes = [];
+	project = {
+		feature: null,
+		marker: null,
+		routeLines: [],
+		setEvents: function() {
+			var onMouseover = function(e) {
+				for (var k = 0; k < this.routeLines.length; k++) {
+					map.addLayer(this.routeLines[k]);
+				}
+			};
+			var onMouseout = function(e) {
+				for (var k = 0; k < this.routeLines.length; k++) {
+					map.removeLayer(this.routeLines[k]);
+				}
+			};
+			if (this.marker) {
+				this.marker.on( {
+					mouseout: onMouseout,
+					mouseover: onMouseover
+				}, this);
+			}
+		}
+	};
+	
+	for (j = 0; j < featureCol.features.length; j++) {
+		feature = featureCol.features[j];
+		if (!feature.properties.hasOwnProperty('class')) 
+			continue;
+		if (feature.properties.class == 'project') {
+			project.feature = feature;
+		} else if (feature.properties.class == 'student') {
+			students.push(feature);
+		} else if (feature.properties.class == 'route') {
+			routes.push(feature);
+		}
+	}
+	//  We assume that every feature collection has exactly one project, 
+	//   at least one student, and at least one route here
+	for (j = 0; j < students.length; j++) {
+		//project.students.push(students[j]);
+		popup = L.popup();
+		studentMarker = L.marker(students[j].geometry.coordinates.reverse()).addTo(map);
+		popup.setContent(students[j].properties.name);
+		studentMarker.bindPopup(popup);
+		studentMarker.on('mouseover', function(e) {
+			this.openPopup();
+		});
+		studentMarker.on('mouseout', function(e) {
+			this.closePopup();
+		});
+	}
+	for (j = 0; j < routes.length; j++) {
+		//project.routes.push(routes[j]);
+		routeLine = L.polyline(routes[j].geometry.coordinates).addTo(map);
+		project.routeLines.push(routeLine);
+		map.removeLayer(routeLine)
+	}
+	project.marker = L.marker(project.feature.geometry.coordinates.reverse()).addTo(map);
+	project.setEvents();
+	/*projectMarker.on('mouseover', function(e) {
+		map.removeLayer(routeLines[0]);
+	});*/
+}
+	
+map.on('click',function(e) {
+	var popup = L.popup()
+		.setLatLng(e.latlng)
+		.setContent("You clicked the map at " + e.latlng.toString())
+		.openOn(map);
+});
+
+alert('success');
+</script>
+</html>

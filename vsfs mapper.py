@@ -124,20 +124,20 @@ for projRow in projectRows[1:]: # skip header
 	# project data
 	projDict = {}
 	studList = []
-	projTag = projRow[ PROJ_PROJECT_TAG ]
+	projTag = projRow[ PROJ_PROJECT_TAG ].capitalize()
 	descRowNdx = getDescRowNdx( descripRows, DESC_PROJECT_TAG, projTag )
 	projDict['summary'] = descripRows[ descRowNdx ][ DESC_SUMMARY ].replace('"','\\"')
-	projDict['name'] = projRow[ PROJ_PROJECT_NAME ]
+	projDict['name'] = projRow[ PROJ_PROJECT_NAME ].capitalize()
 	country = projRow[ PROJ_COUNTRY ]
 	if country.upper() == 'UNITED STATES':
 		city = 'Washington, D.C.'
 		projDict['office'] = projRow[ PROJ_OFFICE ]
 	else:
 		city = projRow[ PROJ_POST ]
-		projDict['post'] = projRow[ PROJ_POST ]
-		projDict['section'] = projRow[ PROJ_SECTION ]
+		projDict['post'] = projRow[ PROJ_POST ].capitalize()
+		projDict['section'] = projRow[ PROJ_SECTION ].capitalize()
 	projLocation = city + ", " + country
-	projDict['location'] = projLocation
+	projDict['location'] = projLocation.capitalize()
 	
 
 	for studRow in studentRows[i:]:
@@ -162,16 +162,16 @@ for projRow in projectRows[1:]: # skip header
 			#TODO: resolve university/hometown unknown
 			grad = studRow[ STUD_GRAD ]
 			undergrad = studRow[ STUD_UNDERGRAD ]
-			major = studRow[ STUD_MAJOR1 ]
-			major2 = studRow[ STUD_MAJOR2 ]
+			major = studRow[ STUD_MAJOR1 ].replace('Other','').strip().strip('0123456789()').strip()
+			major2 = studRow[ STUD_MAJOR2 ].replace('Other',"").strip().strip('0123456789()').strip()
 			empty = ["NA","NULL",""]
 			if grad not in empty:
-				studDict['grad'] = grad
+				studDict['grad'] = grad.strip().strip('0123456789()')
 			if undergrad not in empty:
-				studDict['undergrad'] = undergrad
+				studDict['undergrad'] = undergrad.strip().strip('0123456789()')
 			if major not in empty:
 				if major2 not in empty:
-					major = major + major2
+					major = major + ", " + major2
 				studDict['major'] = major
 			studList.append( studDict )
 	projLocationData.append( projLocation )
@@ -180,37 +180,13 @@ for projRow in projectRows[1:]: # skip header
 	
 dbg_log("data reformatting")
 # ---------------------------------------------------------------------------------	
-# Duplication handle
-#   Projects must be grouped by location in order to avoid multiple points in, say, 
-#   Washington, DC. The best(?) way to do this is maintain the data alphabetized by location,
-#   and when a duplicate is found, add the student data.  For now, however, we will remove
-#   duplicates post-addition in O(n^2) time.
-# TODO: implement binary search
-
-	
-newLocations = []   # list of strings
-newProjectData = [] # list of dictionaries containing info
-newStudentData = [] # list of student-lists containing dictionaries containing info
-for i in range( len(projLocationData) ): 
-	location = projLocationData[i]
-	projDict = projectData[i]
-	studentList = studentData[i]
-	
-	if location in newLocations:
-		ndx = newLocations.index(location)
-		# NOTE THAT WE IGNORE DATA AT THIS POINT #TODO STORE BOTH PROJECT DATA
-		newStudentData[ndx].extend(studentList)
-	else:
-		newLocations.append(location)
-		newProjectData.append(projDict)
-		newStudentData.append(studentList)
+# Duplication handle (moved to geo_utils)
 
 
-projectData = newProjectData # 
-studentData = newStudentData
 
+projectData, studentData = duplicationMerge(projLocationData,projectData,studentData)
 
-dbg_log("duplicate handling")
+#dbg_log("duplicate handling")
 # ---------------------------------------------------------------------------------		
 # GeoJSON file creation from our studentData, projectData data storage
 
@@ -271,7 +247,7 @@ with CoordManager() as cm: # 'with' ensures cm's exit fn called on error
 			gw.beginProperties()
 			gw.addLine('"class": "route"')
 			gw.endProperties()
-			gw.beginGeometry('LineString',circleCoords)
+			gw.beginGeometry('MultiLineString',circleCoords)
 			gw.endGeometry()
 			gw.endFeature()
 			#dbg_log("plot line")

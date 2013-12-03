@@ -1,7 +1,6 @@
              SECTION	TIME		TOTAL
        preliminaries:	0.000000 ms	0.000000 ms
         file reading:	4.999876 ms	4.999876 ms
-   data reformatting:	6.999969 ms	11.999846 ms
-  duplicate handling:	0.000000 ms	11.999846 ms
-     geojson writing:	249.000072 ms	260.999918 ms
-               final:	0.999928 ms	261.999846 ms
+   data reformatting:	8.000135 ms	13.000011 ms
+     geojson writing:	254.999876 ms	267.999887 ms
+               final:	0.000000 ms	267.999887 ms

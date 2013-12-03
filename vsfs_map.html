@@ -11,7 +11,6 @@
 <script src="http://cdn.leafletjs.com/leaflet-0.6.4/leaflet.js"></script>
 <script src="JSON-js-master\json2.js"></script>
 <div id="map"></div>
- 
 <script src="vsfs_data.geojson"></script>
 
 <script>
@@ -27,50 +26,57 @@ var project;		// object containing project feature, marker, and assoc routes
 var projects;		// list of projects
 var students;		// list of student features
 var routes;			// list of routes
+var routesOn;		// list of routes being shown
+var projectOn;		// project marker selected
+var studentOn; 		// student marker selected
 var projectMarker;	// circleMarker
 var studentMarker;	// circleMarker
-var routeLine;		// polyLine - TODO: CHANGE TO MUTLIPOLYLINE
+var routeLine;		// MultiLineString / multiPolyLine
 var projectControl	// A control to select project
 var projectInfo		// A control to display project info
+var studentInfo		// A control for student info
 var popup;			// leaflet popup
 var feature;		// geojson feature 
 var html			// a string for html building
-var i,j;
 
-showList = function(lst) {
-	outStr = "List of length "+lst.length+"\n[";
-	for ( var i=0; i<lst.length-1; i++ ) {
-		outStr += lst[i].toString() + ",";
-	}
-	outStr += lst[lst.length-1].toString() + "]";
-	alert(outStr);
-};
-showProps = function(obj) {
-	for( key in obj) {
-	  if (obj.hasOwnProperty(key)) {
-		  alert(key+" : "+obj[key]);
-		}
-	}
-};
+var i,j;
+routesOn = [];
 
 // -- mapping -- //
 geoData = window[GEODATA_VAR_NAME];
-map = L.map('map').setView([38,-99], 4); // U.S.
+map = L.map('map',{
+	maxBounds: [[-75,-180],[80,180]] //southwest, northeast
+	}).setView([38,-99], 4); // U.S.
 map.zoomControl.setPosition('topright');
 L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-	attribution: 'Map data © OpenStreetMap contributors',
+	attribution: '&#169 OpenStreetMap contributors',
 	maxZoom: 7,
+	minZoom: 2,
 }).addTo(map);
-var projectControl = L.control();
+
+// Controls
+var key = L.control();
+
+projectControl = L.control();
 projectControl.onAdd = function (map) {
 	this._div = L.DomUtil.create('div', 'projectControl');
 	return this._div;
 };
-var projectInfo = L.control();
+projectInfo = L.control();
 projectInfo.onAdd = function (map) {
 	this._div = L.DomUtil.create('div', 'projectInfo');
 	return this._div;
 };
+studentInfo = L.control();
+studentInfo.onAdd = function (map) {
+	this._div = L.DomUtil.create('div', 'studentInfo');
+	return this._div;
+};
+studentInfo.setHTML = function (content) {
+	var prefix = "<div style='border: 1px solid gray'><div style='max-width: 370px; border: 5px solid white; background-color:white'>";
+	var affix = "</div></div>";
+	this._div.innerHTML = prefix + content + affix;	
+}
 projectInfo.setHTML = function (content) {
 	var prefix = "<div style='border: 1px solid gray'><div style='max-width: 370px; border: 5px solid white; background-color:white'>";
 	var affix = "</div></div>";
@@ -79,14 +85,26 @@ projectInfo.setHTML = function (content) {
 projectControl.setHTML = function (content) {
 	this._div.innerHTML = content;
 }
-
+key.onAdd = function (map) {
+	this._div = L.DomUtil.create('div', 'key');
+	this._div.innerHTML = "<div style='border: 1px solid gray'><div style='max-width: 370px; border: 5px solid white; background-color:white'>" +
+		"<b>Key</b><div>Yellow - student</div><div>Blue - project</div></div></div>";
+	return this._div
+}
 projectControl.setPosition('topleft');
 projectControl.addTo(map);
 projectInfo.setPosition('topleft');
 projectInfo.addTo(map);
+studentInfo.setPosition('bottomleft');
+studentInfo.addTo(map);
+key.setPosition('bottomleft');
+key.addTo(map);
 
+
+// main
 projects = [];
 for (i = 0; i < geoData.length; i++) { // Each feature collection
+	
 	featureCol = geoData[i];	
 	students = [];
 	routes = [];
@@ -103,7 +121,8 @@ for (i = 0; i < geoData.length; i++) { // Each feature collection
 			};
 			var onMouseout = function(e) {
 				for (var k = 0; k < this.routeLines.length; k++) {
-					map.removeLayer(this.routeLines[k]);
+					if (routesOn.indexOf(this.routeLines[k]) === -1) {
+						map.removeLayer(this.routeLines[k]); }
 				}
 			};
 			if (this.marker) {
@@ -115,6 +134,7 @@ for (i = 0; i < geoData.length; i++) { // Each feature collection
 		}
 	};
 	
+	var foundStudent = false;
 	for (j = 0; j < featureCol.features.length; j++) {
 		feature = featureCol.features[j];
 		if (!feature.properties.hasOwnProperty('class')) 
@@ -122,115 +142,141 @@ for (i = 0; i < geoData.length; i++) { // Each feature collection
 		if (feature.properties.class == 'project') {
 			project.feature = feature;
 		} else if (feature.properties.class == 'student') {
+			foundStudent = true;
 			students.push(feature);
 		} else if (feature.properties.class == 'route') {
 			routes.push(feature);
 		}
 	}
-	
+	if (!foundStudent) {
+		//alert(project.feature.properties.name);
+		continue;
+	}
 	//  We assume that every feature collection has exactly one project, 
 	//   at least one student, and at least one route here
+	if (project.post =="Lusaka") { alert(students.length);}
 	for (j = 0; j < students.length; j++) {
-		if (students[j].geometry.hasOwnProperty('coordinates')) {
+		student = students[j];
+		if (student.geometry.hasOwnProperty('coordinates')) {
 			project.studentCoordinates.push(students[j].geometry.coordinates);
 		}
-		popup = L.popup();
-		studentMarker = L.circleMarker(students[j].geometry.coordinates.reverse(),{
+		studentMarker = L.circleMarker(student.geometry.coordinates.reverse(),{
 			color: '#FFB300',
-			radius: 2
+			radius: 1
 		}).addTo(map);
-		popup.setContent(students[j].properties.name);
-		studentMarker.bindPopup(popup);
+		html = '<b>' + student.properties.name + '</b>';
+		html += '<div>' + student.properties.location + '<div>';
+		if (student.hasOwnProperty('grad')) {
+			html += '<div>' +'Graduate student at ' + student.properties.grad + '<div>';
+		} else {
+			html += '<div>' +'Undergraduate at ' + student.properties.undergrad + '<div>';
+		}
+		html += '<div>' + student.properties.major + '<div>';
+
+		studentMarker.html = html;
 		studentMarker.on('mouseover', function(e) {
-			this.openPopup();
+			if (typeof(studentOn) !== 'undefined') {
+				studentOn.setStyle({color: '#FFB300'});
+			}
+			studentOn = this;
+			this.setStyle({color: '#00FF22'});
+			studentInfo.setHTML(this.html);
 		});
-		studentMarker.on('mouseout', function(e) {
-			this.closePopup();
-		});
+
 	}
 	
 	for (j = 0; j < routes.length; j++) { // add route
-		routeLine = L.polyline(routes[j].geometry.coordinates,{
+		routeLine = L.multiPolyline(routes[j].geometry.coordinates,{
 			color: '#383942',
 			smoothFactor: 1.0,
 			weight: 1
-		}).addTo(map);
+		});
 		project.routeLines.push(routeLine);
-		map.removeLayer(routeLine)
 	}
-
+	popup = L.popup();
 	project.marker = L.circleMarker(project.feature.geometry.coordinates.reverse(),{
 		color: '#004CFF',
 		radius: 7
 	}).addTo(map);
-
+	project.marker.parent = project;
+	html = '<b>' + project.feature.properties.name + '</b>';
+	html += '<div align="right">' + project.feature.properties.location + '</div>';
+	popup.setContent(html);
+	project.marker.bindPopup(popup);
+	project.marker.on('mouseover', function(e) {
+		html = '<b style="font-size:16px">' + this.parent.feature.properties.name + '</b>' + 
+		'<div>' + this.parent.feature.properties.summary + '</div>';
+		projectInfo.setHTML(html);
+	});
+	
+	/*project.marker.on('mouseout', function(e) {
+		this.closePopup();
+	});*/
+	
 	project.setEvents();
 	projects.push(project);
 	
 }
 
 function loadInfo(sel) {
-	for (j=0; j < projects.length; j++) {
-		if (projects[j].feature.properties.name === sel.value) {
-			project = projects[j];
-			projectInfo.setHTML(project.feature.properties.summary);
-			var coords = project.studentCoordinates;
-			coords.push(project.feature.geometry.coordinates)
-			for (var k = 0; k < project.routeLines.length; k++) {
-					map.addLayer(project.routeLines[k]);
-				}
-			//updateMapView(coords);
+	var i = sel.value;
+	project = projects[i];
+	
+	html = '<b style="font-size:16px">' + project.feature.properties.name + '</b>' + 
+		'<div>' + project.feature.properties.summary + '</div>';
+	projectInfo.setHTML(html);
+	var coords = project.studentCoordinates;
+	coords.push(project.feature.geometry.coordinates);
+	for (var k = 0; k < routesOn.length; k++) {
+			map.removeLayer(routesOn[k]);
+		};
+	routesOn = [];
+	for (var k = 0; k < project.routeLines.length; k++) {
+			map.addLayer(project.routeLines[k]);
+			routesOn.push(project.routeLines[k]);
 		}
-	};
-	
-	//projectInfo.setHTML(sel.value);
-	//map.fitBounds([]); // southWest, northEast
-	
+	project.marker.setStyle({color: '#DE0D0D'});
+	if (typeof(projectOn)!=='undefined') {
+		projectOn.setStyle({color: '#004CFF'});
+	}
+	projectOn = project.marker;
+	map.panTo(project.feature.geometry.coordinates);
+	updateMapView(coords,{
+		//paddingTopLeft: [1000,1000]
+		});
 };
 function updateMapView(points) { // sets map view given a list of points
-	var minLat = 90; // the maximum
-	var maxLat = -90; // the minimum
-	var minLon = 180;
-	var maxLon = -180;
+	if (points.length <= 1) {
+		alert("1 or less points");
+	}
+	var lats = [];
+	var lons = [];
 	for (j=0; j < points.length; j++) {
-		if (points[j][0] < minLat) {
-			minLat = points[j][0];
-		} else if (points[j][0] > maxLat) {
-			maxLat = points[j][0];
-		}
-		if (points[j][1] < minLon) {
-			minLon = points[j][1];
-		} else if (points[j][1] > maxLon) {
-			maxLon = points[j][1];
-		}
-	};
-	map.fitBounds([[minLat,minLon],[maxLat,maxLon]]);
+		lats.push(points[j][0]);
+		lons.push(points[j][1]);
+	}
+	lats.sort();
+	lons.sort();
+
+	var minLat = lats[lats.length-1] - 5;
+	var maxLat = 5 + lats[0];
+	var minLon = lons[lats.length-1] - 5;
+	var maxLon = 5 + lons[0];
+
+	map.fitBounds([[minLat,minLon], [maxLat,maxLon]], padding=50);
 };
 
 html = "<select onchange='loadInfo(this)'>";
 for (i=0; i < projects.length; i++) {
 	project = projects[i];
 	var name = project.feature.properties.name;
-	var infoToPass = {
-		"name": name,
-		"coordinates": project.studentCoordinates,
-		"summary": project.feature.properties.summary
-		}
-	html += "<option value='" + name + "'>" + name + '</option>';
+	html += "<option value='" + i + "'>" + name + '</option>';
 };
 
 html += "</select>";
 projectControl.setHTML(html);
-alert('success');
 
-/*var popup = L.popup();
-function onMapClick(e) {
-    popup
-        .setLatLng(e.latlng)
-        .setContent("You clicked the map at " + e.latlng.toString())
-        .openOn(map);
-}
-map.on('click', onMapClick);
-*/
+
+//alert('success');
 </script>
 </html>

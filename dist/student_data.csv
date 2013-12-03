@@ -1,0 +1,5 @@
+projecttag,lastname,firstname,city,state,country,undergrad school,undergrad major1,undergrad major2,grad school,grad major1,grad major2,undergrad GPA,email
+123,TROTTA,MICHAEL,San Diego,California,United States,177500 Urbana - Champaign,Political Science (107),NA,NA,NA,NA,3.075,notanemail@noprovider.com
+123,PRIFTI,STEPHEN,Philidelphia,Pennsilvania,United States,177500 Urbana - Champaign,Political Science (107),NA,NA,NA,NA,3.075,notanemail@noprovider.com
+230,DOE,JOHN,Glasgow,,United Kingdom,9999999999 Other Foreign             University,Political Science (107),NULL,NULL,NULL,NULL,NULL,notanemail@noprovider.com
+231,STUDENT,SOME,Houston,Texas,United States,177500 Urbana - Champaign,Political Science (107),NA,NA,NA,NA,3.075,notanemail@noprovider.com

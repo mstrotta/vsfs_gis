@@ -181,16 +181,24 @@ class GeoWriter:
 		self.beginObj()
 		self.addLine('"type": "%s",' %aType)
 		line = "\"coordinates\": ["
+		if aType == "MultiLineString":
+			line += "["
 		if len(coords) == 1:
 			line += "%f,%f]" %(coords[0][1],coords[0][0])
 		else:
+			sign = (coords[0][0] > 0)
 			for i in range(len(coords)):
 				pair = coords[i]
+				if sign is not (pair[0] > 0) and abs(pair[0]) > 150: # sign change
+					line = line[ :len(line)-2 ] + "],["
+					sign = (pair[0] > 0)
 				line += "[%f,%f]" %(pair[1],pair[0])
 				if i == len(coords) - 1:
 					line += "]"
 				else:
 					line += ", "
+		if aType == "MultiLineString":
+			line += "]"
 		self.addLine(line)
 
 	def endGeometry(self):
@@ -350,3 +358,31 @@ def lineToGreatCircle( startPnt, endPnt, numSegments=10 ):
 		lon = R2D * lonR
 		greatCircPnts.append( (lon,lat) )
 	return greatCircPnts
+	
+def duplicationMerge(projLocationData,projectData,studentData):
+	'''
+	  Projects must be grouped by location in order to avoid multiple points in, say, 
+    Washington, DC. The best(?) way to do this is maintain the data alphabetized by location,
+    and when a duplicate is found, add the student data.  For now, however, we will remove
+    duplicates post-addition in O(n^2) time.
+	TODO: implement binary search
+	'''
+	newLocations = []   # list of strings
+	newProjectData = [] # list of dictionaries containing info
+	newStudentData = [] # list of student-lists containing dictionaries containing info
+	for i in range( len(projLocationData) ): 
+		location = projLocationData[i]
+		projDict = projectData[i]
+		studentList = studentData[i]
+		
+		if location in newLocations:
+			ndx = newLocations.index(location)
+			# NOTE THAT WE IGNORE DATA AT THIS POINT #TODO STORE BOTH PROJECT DATA
+			newStudentData[ndx].extend(studentList)
+		else:
+			newLocations.append(location)
+			newProjectData.append(projDict)
+			newStudentData.append(studentList)
+
+
+	return( newProjectData, newStudentData )

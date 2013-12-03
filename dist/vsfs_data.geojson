@@ -1,0 +1,132 @@
+var geo_data = [{
+  "type": "FeatureCollection",
+  "features": [
+  {
+    "type": "Feature",
+    "properties":
+    {
+      "class": "project"
+    },
+    "geometry":
+    {
+      "type": "Point",
+      "coordinates": [-77.036464,38.907231]
+    }
+  },
+  {
+    "type": "Feature",
+    "properties":
+    {
+      "class": "student",
+      "name": "MICHAEL"
+    },
+    "geometry":
+    {
+      "type": "Point",
+      "coordinates": [-117.157255,32.715329]
+    }
+  },
+  {
+    "type": "Feature",
+    "properties":
+    {
+      "class": "route"
+    },
+    "geometry":
+    {
+      "type": "LineString",
+      "coordinates": [[-77.036464,38.907231], [-117.157255,32.715329]]
+    }
+  },
+  {
+    "type": "Feature",
+    "properties":
+    {
+      "class": "student",
+      "name": "STEPHEN"
+    },
+    "geometry":
+    {
+      "type": "Point",
+      "coordinates": [-75.163789,39.952335]
+    }
+  },
+  {
+    "type": "Feature",
+    "properties":
+    {
+      "class": "route"
+    },
+    "geometry":
+    {
+      "type": "LineString",
+      "coordinates": [[-77.036464,38.907231], [-75.163789,39.952335]]
+    }
+  },
+  {
+    "type": "Feature",
+    "properties":
+    {
+      "class": "student",
+      "name": "SOME"
+    },
+    "geometry":
+    {
+      "type": "Point",
+      "coordinates": [-95.369390,29.760193]
+    }
+  },
+  {
+    "type": "Feature",
+    "properties":
+    {
+      "class": "route"
+    },
+    "geometry":
+    {
+      "type": "LineString",
+      "coordinates": [[-77.036464,38.907231], [-95.369390,29.760193]]
+    }
+  }]
+},
+{
+  "type": "FeatureCollection",
+  "features": [
+  {
+    "type": "Feature",
+    "properties":
+    {
+      "class": "project"
+    },
+    "geometry":
+    {
+      "type": "Point",
+      "coordinates": [-99.133208,19.432608]
+    }
+  },
+  {
+    "type": "Feature",
+    "properties":
+    {
+      "class": "student",
+      "name": "JOHN"
+    },
+    "geometry":
+    {
+      "type": "Point",
+      "coordinates": [-4.251806,55.864237]
+    }
+  },
+  {
+    "type": "Feature",
+    "properties":
+    {
+      "class": "route"
+    },
+    "geometry":
+    {
+      "type": "LineString",
+      "coordinates": [[-99.133208,19.432608], [-4.251806,55.864237]]
+    }
+  }]
+}];
