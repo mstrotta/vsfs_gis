@@ -57,6 +57,7 @@ Design decisions:
 
 TODO:
  - add circle icons to key
+ - debug map centering behavior
  - For projects that share the same location, we currently merge all students to 
    a single project.  This needs to be re-worked so that no projects are discarded.
    Then, project markers which overlap need to be dealt with
